@@ -1,5 +1,4 @@
 /* eslint-disable prefer-const */
-/* eslint-disable no-prototype-builtins */
 import { type ClassValue, clsx } from "clsx";
 import qs from "qs";
 import { twMerge } from "tailwind-merge";
@@ -13,15 +12,12 @@ export function cn(...inputs: ClassValue[]) {
 // ERROR HANDLER
 export const handleError = (error: unknown) => {
   if (error instanceof Error) {
-    // This is a native JavaScript error (e.g., TypeError, RangeError)
     console.error(error.message);
     throw new Error(`Error: ${error.message}`);
   } else if (typeof error === "string") {
-    // This is a string error message
     console.error(error);
     throw new Error(`Error: ${error}`);
   } else {
-    // This is an unknown type of error
     console.error(error);
     throw new Error(`Unknown error: ${JSON.stringify(error)}`);
   }
@@ -50,9 +46,14 @@ const toBase64 = (str: string) =>
 export const dataUrl = `data:image/svg+xml;base64,${toBase64(
   shimmer(1000, 1000)
 )}`;
-// ==== End
 
 // FORM URL QUERY
+interface FormUrlQueryParams {
+  searchParams: URLSearchParams;
+  key: string;
+  value: string | number | null;
+}
+
 export const formUrlQuery = ({
   searchParams,
   key,
@@ -66,6 +67,11 @@ export const formUrlQuery = ({
 };
 
 // REMOVE KEY FROM QUERY
+interface RemoveUrlQueryParams {
+  searchParams: string;
+  keysToRemove: string[];
+}
+
 export function removeKeysFromQuery({
   searchParams,
   keysToRemove,
@@ -78,26 +84,34 @@ export function removeKeysFromQuery({
 
   // Remove null or undefined values
   Object.keys(currentUrl).forEach(
-    (key) => currentUrl[key] == null && delete currentUrl[key]
+    (key) =>
+      currentUrl[key as keyof typeof currentUrl] == null &&
+      delete currentUrl[key]
   );
 
   return `${window.location.pathname}?${qs.stringify(currentUrl)}`;
 }
 
 // DEBOUNCE
-export const debounce = (func: (...args: any[]) => void, delay: number) => {
+export const debounce = (func: (...args: unknown[]) => void, delay: number) => {
   let timeoutId: NodeJS.Timeout | null;
-  return (...args: any[]) => {
+  return (...args: unknown[]) => {
     if (timeoutId) clearTimeout(timeoutId);
     timeoutId = setTimeout(() => func.apply(null, args), delay);
   };
 };
 
-// GE IMAGE SIZE
+// GET IMAGE SIZE
 export type AspectRatioKey = keyof typeof aspectRatioOptions;
+interface Image {
+  aspectRatio?: string;
+  width?: number;
+  height?: number;
+}
+
 export const getImageSize = (
   type: string,
-  image: any,
+  image: Image,
   dimension: "width" | "height"
 ): number => {
   if (type === "fill") {
@@ -131,24 +145,29 @@ export const download = (url: string, filename: string) => {
 };
 
 // DEEP MERGE OBJECTS
-export const deepMergeObjects = (obj1: any, obj2: any) => {
+export const deepMergeObjects = <T, U>(obj1: T, obj2: U): T & U => {
   if (obj2 === null || obj2 === undefined) {
-    return obj1;
+    return obj1 as T & U;
   }
 
-  let output = { ...obj2 };
+  let output = { ...obj2 } as T & U;
 
   for (let key in obj1) {
-    if (obj1.hasOwnProperty(key)) {
+    if (Object.prototype.hasOwnProperty.call(obj1, key)) {
+      const typedKey = key as unknown as keyof T & keyof U;
+
       if (
-        obj1[key] &&
-        typeof obj1[key] === "object" &&
-        obj2[key] &&
-        typeof obj2[key] === "object"
+        obj1[key as keyof T] &&
+        typeof obj1[key as keyof T] === "object" &&
+        obj2[key as unknown as keyof U] &&
+        typeof obj2[key as unknown as keyof U] === "object"
       ) {
-        output[key] = deepMergeObjects(obj1[key], obj2[key]);
+        output[typedKey] = deepMergeObjects(
+          obj1[key as keyof T],
+          obj2[key as unknown as keyof U]
+        ) as any;
       } else {
-        output[key] = obj1[key];
+        output[typedKey] = obj1[key as keyof T] as any;
       }
     }
   }
